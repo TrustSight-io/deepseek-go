@@ -1,3 +1,4 @@
+// Package util provides internal utility functions for the DeepSeek client.
 package util
 
 import (

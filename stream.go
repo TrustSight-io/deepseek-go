@@ -139,7 +139,11 @@ func (c *Client) CreateChatCompletionStream(
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				err = fmt.Errorf("error closing response body: %v", cerr)
+			}
+		}()
 		var apiErr errors.APIError
 		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
 			return nil, fmt.Errorf("failed to decode error response: %v", err)
@@ -172,8 +176,12 @@ func (ca *ContentAccumulator) Reset() {
 }
 
 // CollectFullResponse collects a complete response from a stream
-func CollectFullResponse(stream *Stream) (string, error) {
-	defer stream.Close()
+func CollectFullResponse(stream *Stream) (response string, err error) {
+	defer func() {
+		if cerr := stream.Close(); cerr != nil {
+			err = fmt.Errorf("error closing stream: %v", cerr)
+		}
+	}()
 
 	var accumulator ContentAccumulator
 

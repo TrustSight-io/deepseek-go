@@ -1,3 +1,4 @@
+// Package testutil provides testing utilities for the DeepSeek client.
 package testutil
 
 import (
@@ -19,7 +20,10 @@ func LoadTestConfig(t *testing.T) *TestConfig {
 	t.Helper()
 
 	// Load .env file if it exists
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		// Ignore error since .env file is optional
+		_ = err
+	}
 
 	config := &TestConfig{
 		APIKey:      os.Getenv("DEEPSEEK_API_KEY"),

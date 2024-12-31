@@ -123,7 +123,11 @@ func TestCreateChatCompletionStream(t *testing.T) {
 		Stream: true,
 	})
 	require.NoError(t, err)
-	defer stream.Close()
+	defer func() {
+		if cerr := stream.Close(); cerr != nil {
+			t.Errorf("error closing stream: %v", cerr)
+		}
+	}()
 
 	var collected []string
 	var receivedRole bool
@@ -210,13 +214,19 @@ func TestCreateChatCompletionStreamErrors(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(t, err)
 				if stream != nil {
-					stream.Close()
+					if cerr := stream.Close(); cerr != nil {
+						t.Errorf("error closing stream: %v", cerr)
+					}
 				}
 				return
 			}
 
 			require.NoError(t, err)
-			defer stream.Close()
+			defer func() {
+				if cerr := stream.Close(); cerr != nil {
+					t.Errorf("error closing stream: %v", cerr)
+				}
+			}()
 
 			resp, err := stream.Recv()
 			require.NoError(t, err)

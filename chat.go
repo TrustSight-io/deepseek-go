@@ -14,10 +14,14 @@ import (
 type Role string
 
 const (
-	RoleSystem    Role = "system"
-	RoleUser      Role = "user"
+	// RoleSystem represents a system message in a chat conversation
+	RoleSystem Role = "system"
+	// RoleUser represents a user message in a chat conversation
+	RoleUser Role = "user"
+	// RoleAssistant represents an assistant message in a chat conversation
 	RoleAssistant Role = "assistant"
-	RoleFunction  Role = "function"
+	// RoleFunction represents a function response message in a chat conversation
+	RoleFunction Role = "function"
 )
 
 // Message represents a chat message
@@ -123,7 +127,11 @@ func (c *Client) CreateChatCompletion(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = fmt.Errorf("error closing response body: %v", cerr)
+		}
+	}()
 
 	var response ChatCompletionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -150,15 +158,17 @@ func (c *Client) createChatCompletion(
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		if cerr := resp.Body.Close(); cerr != nil {
+			return nil, fmt.Errorf("error closing response body: %v", cerr)
+		}
 
 		var apiErr errors.APIError
 		if err := json.Unmarshal(body, &apiErr); err != nil {
-			return nil, fmt.Errorf("error parsing error response: %w", err)
+			return nil, fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(body))
 		}
 
 		apiErr.StatusCode = resp.StatusCode
-		return nil, errors.HandleErrorResp(resp, &apiErr)
+		return nil, &apiErr
 	}
 
 	return resp, nil

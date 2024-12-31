@@ -143,70 +143,88 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body inter
 func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error {
 	var lastErr error
 
-	// Execute request with retries if enabled
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, body, err := c.executeRequest(req)
 		if err != nil {
 			lastErr = err
-			if !c.enableRetries || attempt == c.maxRetries {
-				return fmt.Errorf("request failed: %v", err)
-			}
-			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
-			continue
-		}
-		defer resp.Body.Close()
-
-		// Read the response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			lastErr = fmt.Errorf("failed to read response body: %v", err)
-			if !c.enableRetries || attempt == c.maxRetries {
-				return lastErr
+			if !c.shouldRetryRequest(attempt, err) {
+				return err
 			}
 			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
 			continue
 		}
 
-		// Check if we should retry based on status code
-		if shouldRetry(resp.StatusCode) && c.enableRetries && attempt < c.maxRetries {
-			lastErr = fmt.Errorf("request failed with status %d", resp.StatusCode)
+		if err := c.handleResponse(resp, body, v); err != nil {
+			lastErr = err
+			if !c.shouldRetryResponse(attempt, resp.StatusCode) {
+				return err
+			}
 			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
 			continue
-		}
-
-		// Handle error responses
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			// Check if response is HTML (common for infrastructure errors)
-			if util.IsHTML(body) {
-				return fmt.Errorf("received HTML response with status %d", resp.StatusCode)
-			}
-
-			var apiErr errors.APIError
-			if err := json.Unmarshal(body, &apiErr); err != nil {
-				// If we can't decode the error, return the raw body as string
-				return fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(body))
-			}
-			apiErr.StatusCode = resp.StatusCode
-			return errors.HandleErrorResp(resp, &apiErr)
-		}
-
-		// Decode the response if a target is provided
-		if v != nil {
-			if err := json.Unmarshal(body, v); err != nil {
-				return fmt.Errorf("failed to decode response: %v", err)
-			}
 		}
 
 		return nil
 	}
 
 	return lastErr
+}
+
+// executeRequest executes a single HTTP request and returns the response and body
+func (c *Client) executeRequest(req *http.Request) (*http.Response, []byte, error) {
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("request failed: %v", err)
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = fmt.Errorf("error closing response body: %v", cerr)
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	return resp, body, nil
+}
+
+// handleResponse processes the HTTP response and handles any errors
+func (c *Client) handleResponse(resp *http.Response, body []byte, v interface{}) error {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if util.IsHTML(body) {
+			return fmt.Errorf("received HTML response with status %d", resp.StatusCode)
+		}
+
+		var apiErr errors.APIError
+		if err := json.Unmarshal(body, &apiErr); err != nil {
+			return fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(body))
+		}
+		apiErr.StatusCode = resp.StatusCode
+		return errors.HandleErrorResp(resp, &apiErr)
+	}
+
+	if v != nil {
+		if err := json.Unmarshal(body, v); err != nil {
+			return fmt.Errorf("failed to decode response: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// shouldRetryRequest determines if a request error should trigger a retry
+func (c *Client) shouldRetryRequest(attempt int, _ error) bool {
+	return c.enableRetries && attempt < c.maxRetries
+}
+
+// shouldRetryResponse determines if a response should trigger a retry based on status code
+func (c *Client) shouldRetryResponse(attempt int, statusCode int) bool {
+	return shouldRetry(statusCode) && c.enableRetries && attempt < c.maxRetries
 }
 
 // shouldRetry returns true if the status code indicates a retryable error

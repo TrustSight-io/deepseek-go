@@ -1,3 +1,5 @@
+// Package errors provides custom error types and error handling for the DeepSeek client.
+// It includes API errors, request errors, authentication errors, and rate limit errors.
 package errors
 
 import (
@@ -118,7 +120,10 @@ func HandleErrorResp(resp *http.Response, apiErr *APIError) error {
 	case http.StatusTooManyRequests:
 		retryAfter := 0
 		if s := resp.Header.Get("Retry-After"); s != "" {
-			fmt.Sscanf(s, "%d", &retryAfter)
+			if _, err := fmt.Sscanf(s, "%d", &retryAfter); err != nil {
+				// If parsing fails, use default retry after value
+				retryAfter = 60
+			}
 		}
 		return &RateLimitError{RetryAfter: retryAfter, Err: fmt.Errorf("%s", apiErr.Message)}
 	default:

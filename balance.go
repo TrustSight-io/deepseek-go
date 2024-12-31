@@ -1,3 +1,5 @@
+// Package deepseek provides a Go client for the DeepSeek API.
+// It supports chat completions, streaming, function calling, and more.
 package deepseek
 
 import (
