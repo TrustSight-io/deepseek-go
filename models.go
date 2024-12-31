@@ -149,29 +149,3 @@ type FunctionDefinition struct {
 	Description string `json:"description,omitempty"`
 	Parameters  any    `json:"parameters"`
 }
-
-// StreamChoice represents a choice in a streaming response
-type StreamChoice struct {
-	Index        int    `json:"index"`
-	Delta        Delta  `json:"delta"`
-	FinishReason string `json:"finish_reason,omitempty"`
-}
-
-// Delta represents the change in a streaming response
-type Delta struct {
-	Role         string `json:"role,omitempty"`
-	Content      string `json:"content,omitempty"`
-	FunctionCall *struct {
-		Name      string `json:"name,omitempty"`
-		Arguments string `json:"arguments,omitempty"`
-	} `json:"function_call,omitempty"`
-}
-
-// ChatCompletionStream represents a streaming response
-type ChatCompletionStream struct {
-	ID      string         `json:"id"`
-	Object  string         `json:"object"`
-	Created int64          `json:"created"`
-	Model   string         `json:"model"`
-	Choices []StreamChoice `json:"choices"`
-}
