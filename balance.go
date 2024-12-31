@@ -8,23 +8,36 @@ import (
 	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
-// Balance represents the account's credit balance information.
+// Balance represents a user's balance information
 type Balance struct {
-	TotalCredits     float64 `json:"total_credits"`
-	UsedCredits      float64 `json:"used_credits"`
-	RemainingCredits float64 `json:"remaining_credits"`
-	LastUpdated      string  `json:"last_updated"`
+	Object         string  `json:"object"`
+	TotalBalance   float64 `json:"total_balance"`
+	Currency       string  `json:"currency"`
+	GrantedQuota   float64 `json:"granted_quota"`
+	UsedQuota      float64 `json:"used_quota"`
+	RemainingQuota float64 `json:"remaining_quota"`
+	QuotaResetTime string  `json:"quota_reset_time,omitempty"`
+	ExpirationTime string  `json:"expiration_time,omitempty"`
+	LastUpdated    string  `json:"last_updated"`
 }
 
-// GetBalance retrieves the current balance information for the account.
+// GetBalance retrieves the current balance for the account
 func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
 	if ctx == nil {
-		return nil, &errors.InvalidRequestError{Param: "context", Err: fmt.Errorf("cannot be nil")}
+		return nil, &errors.InvalidRequestError{
+			Param: "context",
+			Err:   fmt.Errorf("cannot be nil"),
+		}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, "/balance", nil)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/user/balance", c.baseURL),
+		nil,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
 	var balance Balance
@@ -35,44 +48,88 @@ func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
 	return &balance, nil
 }
 
-// APIUsage represents detailed API usage information.
-type APIUsage struct {
-	StartDate string `json:"start_date"`
-	EndDate   string `json:"end_date"`
-	Models    []struct {
-		Model     string  `json:"model"`
-		Requests  int64   `json:"requests"`
-		Tokens    int64   `json:"tokens"`
-		Credits   float64 `json:"credits"`
-		TokenCost float64 `json:"token_cost"`
-		TotalCost float64 `json:"total_cost"`
-	} `json:"models"`
-	TotalRequests int64   `json:"total_requests"`
-	TotalTokens   int64   `json:"total_tokens"`
-	TotalCredits  float64 `json:"total_credits"`
+// UsageRecord represents a usage record for a specific time period
+type UsageRecord struct {
+	Timestamp        string  `json:"timestamp"`
+	RequestCount     int     `json:"request_count"`
+	PromptTokens     int     `json:"prompt_tokens"`
+	CompletionTokens int     `json:"completion_tokens"`
+	TotalTokens      int     `json:"total_tokens"`
+	Cost             float64 `json:"cost"`
 }
 
-// GetUsage retrieves the API usage information for a specified time period.
-func (c *Client) GetUsage(ctx context.Context, startDate, endDate string) (*APIUsage, error) {
+// UsageResponse represents the response from the usage API
+type UsageResponse struct {
+	Object    string        `json:"object"`
+	Data      []UsageRecord `json:"data"`
+	StartTime string        `json:"start_time"`
+	EndTime   string        `json:"end_time"`
+	Total     struct {
+		RequestCount     int     `json:"request_count"`
+		PromptTokens     int     `json:"prompt_tokens"`
+		CompletionTokens int     `json:"completion_tokens"`
+		TotalTokens      int     `json:"total_tokens"`
+		TotalCost        float64 `json:"total_cost"`
+	} `json:"total"`
+}
+
+// UsageParams represents parameters for retrieving usage history
+type UsageParams struct {
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time"`
+	Granularity string `json:"granularity,omitempty"` // hourly, daily, monthly
+}
+
+// GetUsage retrieves usage history for the account
+func (c *Client) GetUsage(ctx context.Context, params *UsageParams) (*UsageResponse, error) {
 	if ctx == nil {
-		return nil, &errors.InvalidRequestError{Param: "context", Err: fmt.Errorf("cannot be nil")}
+		return nil, &errors.InvalidRequestError{
+			Param: "context",
+			Err:   fmt.Errorf("cannot be nil"),
+		}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, "/usage", nil)
+	if params == nil {
+		return nil, &errors.InvalidRequestError{
+			Param: "params",
+			Err:   fmt.Errorf("cannot be nil"),
+		}
+	}
+
+	if params.StartTime == "" {
+		return nil, &errors.InvalidRequestError{
+			Param: "start_time",
+			Err:   fmt.Errorf("cannot be empty"),
+		}
+	}
+
+	if params.EndTime == "" {
+		return nil, &errors.InvalidRequestError{
+			Param: "end_time",
+			Err:   fmt.Errorf("cannot be empty"),
+		}
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/user/usage", c.baseURL),
+		nil,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
+	// Add query parameters
 	q := req.URL.Query()
-	if startDate != "" {
-		q.Add("start_date", startDate)
-	}
-	if endDate != "" {
-		q.Add("end_date", endDate)
+	q.Add("start_time", params.StartTime)
+	q.Add("end_time", params.EndTime)
+	if params.Granularity != "" {
+		q.Add("granularity", params.Granularity)
 	}
 	req.URL.RawQuery = q.Encode()
 
-	var usage APIUsage
+	var usage UsageResponse
 	if err := c.do(ctx, req, &usage); err != nil {
 		return nil, err
 	}
