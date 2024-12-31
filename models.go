@@ -35,7 +35,12 @@ type ListModelsResponse struct {
 
 // ListModels returns a list of available models
 func (c *Client) ListModels(ctx context.Context) (*ListModelsResponse, error) {
-	req, err := c.newRequest(ctx, http.MethodGet, "/models", nil)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/models", c.baseURL),
+		nil,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -54,7 +59,12 @@ func (c *Client) GetModel(ctx context.Context, modelID string) (*Model, error) {
 		return nil, &errors.InvalidRequestError{Param: "modelID", Err: fmt.Errorf("cannot be empty")}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, fmt.Sprintf("/models/%s", modelID), nil)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/models/%s", c.baseURL, modelID),
+		nil,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -81,7 +91,12 @@ func (c *Client) GetModelConfig(ctx context.Context, modelID string) (*ModelConf
 		return nil, &errors.InvalidRequestError{Param: "modelID", Err: fmt.Errorf("cannot be empty")}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, fmt.Sprintf("/models/%s/config", modelID), nil)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/models/%s/config", c.baseURL, modelID),
+		nil,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
