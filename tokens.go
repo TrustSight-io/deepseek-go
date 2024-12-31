@@ -1,145 +1,58 @@
 package deepseek
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-
-	"github.com/trustsight/deepseek-go/internal/errors"
+	"unicode"
 )
 
-// TokenCount represents token count information
-type TokenCount struct {
-	TotalTokens int `json:"total_tokens"`
-	Details     struct {
-		Prompt     int  `json:"prompt_tokens"`
-		Completion int  `json:"completion_tokens,omitempty"`
-		Truncated  bool `json:"truncated,omitempty"`
-	} `json:"details"`
+// TokenEstimate represents an estimated token count
+type TokenEstimate struct {
+	EstimatedTokens int `json:"estimated_tokens"`
 }
 
-// CountTokens counts the number of tokens in the given text for a specific model
-func (c *Client) CountTokens(ctx context.Context, model string, text string) (*TokenCount, error) {
-	if ctx == nil {
-		return nil, &errors.InvalidRequestError{
-			Param: "context",
-			Err:   fmt.Errorf("cannot be nil"),
+// EstimateTokenCount estimates the number of tokens in a text based on character type ratios
+func (c *Client) EstimateTokenCount(text string) *TokenEstimate {
+	var total float64
+	for _, r := range text {
+		if unicode.Is(unicode.Han, r) {
+			// Chinese character ≈ 0.6 token
+			total += 0.6
+		} else if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsPunct(r) || unicode.IsSymbol(r) {
+			// English character/number/symbol ≈ 0.3 token
+			total += 0.3
 		}
+		// Skip whitespace and other characters
 	}
 
-	if model == "" {
-		return nil, &errors.InvalidRequestError{
-			Param: "model",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
+	// Round up to nearest integer
+	estimatedTokens := int(total + 0.5)
+	if estimatedTokens < 1 {
+		estimatedTokens = 1
 	}
 
-	if text == "" {
-		return nil, &errors.InvalidRequestError{
-			Param: "text",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
+	return &TokenEstimate{
+		EstimatedTokens: estimatedTokens,
 	}
-
-	reqBody := struct {
-		Model string `json:"model"`
-		Text  string `json:"text"`
-	}{
-		Model: model,
-		Text:  text,
-	}
-
-	req, err := c.newRequest(ctx, http.MethodPost, "/tokenizer/count", reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
-	}
-
-	var count TokenCount
-	if err := c.do(ctx, req, &count); err != nil {
-		return nil, err
-	}
-
-	return &count, nil
 }
 
-// EstimateTokensFromMessages estimates the number of tokens in a chat completion request
-func (c *Client) EstimateTokensFromMessages(ctx context.Context, model string, messages []Message) (*TokenCount, error) {
-	if ctx == nil {
-		return nil, &errors.InvalidRequestError{
-			Param: "context",
-			Err:   fmt.Errorf("cannot be nil"),
-		}
-	}
+// EstimateTokensFromMessages estimates the number of tokens in a list of chat messages
+func (c *Client) EstimateTokensFromMessages(messages []Message) *TokenEstimate {
+	var totalTokens int
 
-	if model == "" {
-		return nil, &errors.InvalidRequestError{
-			Param: "model",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
-	}
-
-	if len(messages) == 0 {
-		return nil, &errors.InvalidRequestError{
-			Param: "messages",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
-	}
-
-	// Convert messages to a single string for token counting
-	var text string
 	for _, msg := range messages {
-		text += fmt.Sprintf("<%s>%s</s>\n", msg.Role, msg.Content)
-	}
+		// Add tokens for role (system/user/assistant)
+		totalTokens += 3 // Approximate tokens for role
 
-	return c.CountTokens(ctx, model, text)
-}
+		// Add tokens for content
+		totalTokens += c.EstimateTokenCount(msg.Content).EstimatedTokens
 
-// TokenizationResponse represents the response from the tokenization API
-type TokenizationResponse struct {
-	Tokens []string `json:"tokens"`
-	IDs    []int    `json:"token_ids"`
-}
-
-// TokenizeText tokenizes the given text into tokens for a specific model
-func (c *Client) TokenizeText(ctx context.Context, model string, text string) (*TokenizationResponse, error) {
-	if ctx == nil {
-		return nil, &errors.InvalidRequestError{
-			Param: "context",
-			Err:   fmt.Errorf("cannot be nil"),
+		// Add tokens for function call if present
+		if msg.FunctionCall != nil {
+			totalTokens += 3 // Approximate tokens for function name
+			totalTokens += c.EstimateTokenCount(string(msg.FunctionCall.Arguments)).EstimatedTokens
 		}
 	}
 
-	if model == "" {
-		return nil, &errors.InvalidRequestError{
-			Param: "model",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
+	return &TokenEstimate{
+		EstimatedTokens: totalTokens,
 	}
-
-	if text == "" {
-		return nil, &errors.InvalidRequestError{
-			Param: "text",
-			Err:   fmt.Errorf("cannot be empty"),
-		}
-	}
-
-	reqBody := struct {
-		Model string `json:"model"`
-		Text  string `json:"text"`
-	}{
-		Model: model,
-		Text:  text,
-	}
-
-	req, err := c.newRequest(ctx, http.MethodPost, "/tokenizer/tokenize", reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
-	}
-
-	var tokenization TokenizationResponse
-	if err := c.do(ctx, req, &tokenization); err != nil {
-		return nil, err
-	}
-
-	return &tokenization, nil
 }

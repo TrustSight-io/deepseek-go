@@ -1,7 +1,6 @@
 package deepseek_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,110 +9,74 @@ import (
 	"github.com/trustsight/deepseek-go/internal/testutil"
 )
 
-func TestCountTokens(t *testing.T) {
-	testutil.SkipIfShort(t)
-	config := testutil.LoadTestConfig(t)
-	client, err := deepseek.NewClient(config.APIKey)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name    string
-		model   string
-		text    string
-		wantErr bool
-	}{
-		{
-			name:    "basic text",
-			model:   "deepseek-chat",
-			text:    "Hello, world!",
-			wantErr: false,
-		},
-		{
-			name:    "empty text",
-			model:   "deepseek-chat",
-			text:    "",
-			wantErr: true,
-		},
-		{
-			name:    "empty model",
-			model:   "",
-			text:    "Hello, world!",
-			wantErr: true,
-		},
-		{
-			name:    "long text",
-			model:   "deepseek-chat",
-			text:    string(make([]byte, 10000)),
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
-			defer cancel()
-
-			count, err := client.CountTokens(ctx, tt.model, tt.text)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, count)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.NotNil(t, count)
-			assert.NotZero(t, count.TotalTokens)
-			assert.NotZero(t, count.Details.Prompt)
-			if tt.name == "long text" {
-				assert.True(t, count.Details.Truncated)
-			}
-		})
-	}
-}
-
-func TestEstimateTokensFromMessages(t *testing.T) {
-	testutil.SkipIfShort(t)
+func TestEstimateTokenCount(t *testing.T) {
 	config := testutil.LoadTestConfig(t)
 	client, err := deepseek.NewClient(config.APIKey)
 	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
-		model    string
-		messages []deepseek.Message
-		wantErr  bool
+		text     string
+		minCount int // Since these are estimates, we test for minimum expected tokens
 	}{
 		{
-			name:  "single message",
-			model: "deepseek-chat",
+			name:     "english text",
+			text:     "Hello, world!",
+			minCount: 3, // At least 3 tokens for "Hello", ",", "world!"
+		},
+		{
+			name:     "chinese text",
+			text:     "你好世界",
+			minCount: 2, // At least 2 tokens for 4 Chinese characters
+		},
+		{
+			name:     "mixed text",
+			text:     "Hello 世界!",
+			minCount: 2, // At least 2 tokens
+		},
+		{
+			name:     "empty text",
+			text:     "",
+			minCount: 1, // Minimum 1 token
+		},
+		{
+			name:     "numbers and symbols",
+			text:     "123 !@#",
+			minCount: 2, // At least 2 tokens
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			estimate := client.EstimateTokenCount(tt.text)
+			assert.NotNil(t, estimate)
+			assert.GreaterOrEqual(t, estimate.EstimatedTokens, tt.minCount)
+		})
+	}
+}
+
+func TestEstimateTokensFromMessages(t *testing.T) {
+	config := testutil.LoadTestConfig(t)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		messages []deepseek.Message
+		minCount int // Since these are estimates, we test for minimum expected tokens
+	}{
+		{
+			name: "single message",
 			messages: []deepseek.Message{
 				{
 					Role:    deepseek.RoleUser,
 					Content: "Hello!",
 				},
 			},
-			wantErr: false,
+			minCount: 4, // At least 4 tokens (3 for role + 1 for content)
 		},
 		{
-			name:     "empty messages",
-			model:    "deepseek-chat",
-			messages: []deepseek.Message{},
-			wantErr:  true,
-		},
-		{
-			name:  "empty model",
-			model: "",
-			messages: []deepseek.Message{
-				{
-					Role:    deepseek.RoleUser,
-					Content: "Hello!",
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name:  "multiple messages",
-			model: "deepseek-chat",
+			name: "multiple messages",
 			messages: []deepseek.Message{
 				{
 					Role:    deepseek.RoleSystem,
@@ -121,97 +84,37 @@ func TestEstimateTokensFromMessages(t *testing.T) {
 				},
 				{
 					Role:    deepseek.RoleUser,
-					Content: "Hello!",
-				},
-				{
-					Role:    deepseek.RoleAssistant,
-					Content: "Hi there! How can I help you today?",
+					Content: "Hi!",
 				},
 			},
-			wantErr: false,
+			minCount: 10, // At least 10 tokens (3 per role + content tokens)
+		},
+		{
+			name: "with function call",
+			messages: []deepseek.Message{
+				{
+					Role:    deepseek.RoleUser,
+					Content: "Get weather",
+					FunctionCall: &deepseek.FunctionCall{
+						Name:      "get_weather",
+						Arguments: []byte(`{"location":"New York"}`),
+					},
+				},
+			},
+			minCount: 8, // At least 8 tokens (3 for role + content + function name + args)
+		},
+		{
+			name:     "empty messages",
+			messages: []deepseek.Message{},
+			minCount: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
-			defer cancel()
-
-			count, err := client.EstimateTokensFromMessages(ctx, tt.model, tt.messages)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, count)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.NotNil(t, count)
-			assert.NotZero(t, count.TotalTokens)
-			assert.NotZero(t, count.Details.Prompt)
-		})
-	}
-}
-
-func TestTokenizeText(t *testing.T) {
-	testutil.SkipIfShort(t)
-	config := testutil.LoadTestConfig(t)
-	client, err := deepseek.NewClient(config.APIKey)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name    string
-		model   string
-		text    string
-		wantErr bool
-	}{
-		{
-			name:    "basic text",
-			model:   "deepseek-chat",
-			text:    "Hello, world!",
-			wantErr: false,
-		},
-		{
-			name:    "empty text",
-			model:   "deepseek-chat",
-			text:    "",
-			wantErr: true,
-		},
-		{
-			name:    "empty model",
-			model:   "",
-			text:    "Hello, world!",
-			wantErr: true,
-		},
-		{
-			name:    "special characters",
-			model:   "deepseek-chat",
-			text:    "Hello 👋 World! 🌍",
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
-			defer cancel()
-
-			tokenization, err := client.TokenizeText(ctx, tt.model, tt.text)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, tokenization)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.NotNil(t, tokenization)
-			assert.NotEmpty(t, tokenization.Tokens)
-			assert.NotEmpty(t, tokenization.IDs)
-			assert.Equal(t, len(tokenization.Tokens), len(tokenization.IDs))
-
-			// Verify token IDs are valid
-			for _, id := range tokenization.IDs {
-				assert.NotZero(t, id)
-			}
+			estimate := client.EstimateTokensFromMessages(tt.messages)
+			assert.NotNil(t, estimate)
+			assert.GreaterOrEqual(t, estimate.EstimatedTokens, tt.minCount)
 		})
 	}
 }

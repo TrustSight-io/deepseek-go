@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -19,22 +18,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	model := "deepseek-chat"
 
-	// Count tokens in a text
+	// Estimate tokens in a text
 	text := "Hello, how are you doing today? I hope you're having a great day!"
-	fmt.Printf("Counting tokens in text: %q\n", text)
+	fmt.Printf("Estimating tokens in text: %q\n", text)
 
-	count, err := client.CountTokens(context.Background(), model, text)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Total tokens: %d\n", count.TotalTokens)
-	fmt.Printf("Prompt tokens: %d\n", count.Details.Prompt)
-	if count.Details.Truncated {
-		fmt.Println("Note: Text was truncated")
-	}
+	estimate := client.EstimateTokenCount(text)
+	fmt.Printf("Estimated tokens: %d\n", estimate.EstimatedTokens)
 
 	// Estimate tokens in chat messages
 	messages := []deepseek.Message{
@@ -57,26 +47,18 @@ func main() {
 		fmt.Printf("- %s: %q\n", msg.Role, msg.Content)
 	}
 
-	estimate, err := client.EstimateTokensFromMessages(context.Background(), model, messages)
-	if err != nil {
-		log.Fatal(err)
-	}
+	estimate = client.EstimateTokensFromMessages(messages)
+	fmt.Printf("\nEstimated total tokens: %d\n", estimate.EstimatedTokens)
 
-	fmt.Printf("\nEstimated total tokens: %d\n", estimate.TotalTokens)
-	fmt.Printf("Estimated prompt tokens: %d\n", estimate.Details.Prompt)
-	if estimate.Details.Truncated {
-		fmt.Println("Note: Messages were truncated")
-	}
+	// Example with Chinese text
+	chineseText := "你好，世界！"
+	fmt.Printf("\nEstimating tokens in Chinese text: %q\n", chineseText)
+	estimate = client.EstimateTokenCount(chineseText)
+	fmt.Printf("Estimated tokens: %d\n", estimate.EstimatedTokens)
 
-	// Tokenize text
-	fmt.Printf("\nTokenizing text: %q\n", text)
-	tokenization, err := client.TokenizeText(context.Background(), model, text)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("\nTokens:")
-	for i, token := range tokenization.Tokens {
-		fmt.Printf("%d. %q (ID: %d)\n", i+1, token, tokenization.IDs[i])
-	}
+	// Example with mixed text
+	mixedText := "Hello 世界! How are you? 你好吗？"
+	fmt.Printf("\nEstimating tokens in mixed text: %q\n", mixedText)
+	estimate = client.EstimateTokenCount(mixedText)
+	fmt.Printf("Estimated tokens: %d\n", estimate.EstimatedTokens)
 }

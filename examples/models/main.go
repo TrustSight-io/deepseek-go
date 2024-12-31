@@ -29,17 +29,8 @@ func main() {
 
 	for _, model := range models.Data {
 		fmt.Printf("- %s:\n", model.ID)
-		fmt.Printf("  Context Window: %d\n", model.ContextWindow)
-		fmt.Printf("  Max Tokens: %d\n", model.MaxTokens)
-		if model.PricingConfig != nil {
-			fmt.Printf("  Pricing:\n")
-			fmt.Printf("    Prompt Token Price: %f %s\n", model.PricingConfig.PromptTokenPrice, model.PricingConfig.Currency)
-			fmt.Printf("    Completion Token Price: %f %s\n", model.PricingConfig.CompletionTokenPrice, model.PricingConfig.Currency)
-		}
-		fmt.Printf("  Capabilities:\n")
-		for capability, enabled := range model.Capabilities {
-			fmt.Printf("    %s: %v\n", capability, enabled)
-		}
+		fmt.Printf("  Object: %s\n", model.Object)
+		fmt.Printf("  Owner: %s\n", model.OwnedBy)
 		fmt.Println()
 	}
 
@@ -52,26 +43,6 @@ func main() {
 	}
 
 	fmt.Printf("Model ID: %s\n", model.ID)
-	fmt.Printf("Created: %d\n", model.Created)
+	fmt.Printf("Object: %s\n", model.Object)
 	fmt.Printf("Owner: %s\n", model.OwnedBy)
-	fmt.Printf("Context Window: %d\n", model.ContextWindow)
-	fmt.Printf("Max Tokens: %d\n", model.MaxTokens)
-
-	// Get model configuration
-	fmt.Printf("\nGetting configuration for model %s:\n", modelID)
-	config, err := client.GetModelConfig(context.Background(), modelID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Context Window: %d\n", config.ContextWindow)
-	fmt.Printf("Max Tokens: %d\n", config.MaxTokens)
-	fmt.Printf("\nSupported Features:\n")
-	for feature, supported := range config.SupportedFeatures {
-		fmt.Printf("- %s: %v\n", feature, supported)
-	}
-	fmt.Printf("\nDefault Parameters:\n")
-	for param, value := range config.DefaultParameters {
-		fmt.Printf("- %s: %v\n", param, value)
-	}
 }
