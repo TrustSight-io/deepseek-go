@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/trustsight/deepseek-go"
+	"github.com/trustsight-io/deepseek-go"
 )
 
 func main() {

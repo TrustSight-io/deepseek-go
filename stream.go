@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/trustsight/deepseek-go/internal/errors"
+	"github.com/trustsight-io/deepseek-go/internal/errors"
 )
 
 // Stream represents a streaming response from the API

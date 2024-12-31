@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/trustsight/deepseek-go"
-	"github.com/trustsight/deepseek-go/internal/testutil"
+	"github.com/trustsight-io/deepseek-go"
+	"github.com/trustsight-io/deepseek-go/internal/testutil"
 )
 
 func TestGetBalance(t *testing.T) {

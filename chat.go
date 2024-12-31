@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/trustsight/deepseek-go/internal/errors"
+	"github.com/trustsight-io/deepseek-go/internal/errors"
 )
 
 // Role represents a chat message role

@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/trustsight/deepseek-go"
+	"github.com/trustsight-io/deepseek-go"
 )
 
 // Product represents a product in an e-commerce system

@@ -1,4 +1,4 @@
-module github.com/trustsight/deepseek-go
+module github.com/trustsight-io/deepseek-go
 
 go 1.21
 

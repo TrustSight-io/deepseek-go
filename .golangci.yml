@@ -1,0 +1,25 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - gosimple
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - misspell
+    - gocyclo
+    - dupl
+    - goconst
+    - revive
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+
+run:
+  deadline: 5m
+
+issues:
+  exclude-use-default: false

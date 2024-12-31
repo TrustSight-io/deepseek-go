@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/trustsight/deepseek-go/internal/errors"
+	"github.com/trustsight-io/deepseek-go/internal/errors"
 )
 
 // BalanceInfo represents individual balance information for a currency

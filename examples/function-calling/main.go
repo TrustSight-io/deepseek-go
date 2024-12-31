@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/trustsight/deepseek-go"
+	"github.com/trustsight-io/deepseek-go"
 )
 
 // WeatherInfo represents weather information for a location

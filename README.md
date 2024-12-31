@@ -5,10 +5,12 @@ A Go client library for the DeepSeek API.
 ## Installation
 
 ```bash
-go get github.com/trustsight/deepseek-go
+go get github.com/trustsight-io/deepseek-go
 ```
 
 ## Usage
+
+### Chat Completion
 
 ```go
 package main
@@ -16,13 +18,17 @@ package main
 import (
     "context"
     "fmt"
+    "log"
     "os"
 
-    "github.com/trustsight/deepseek-go"
+    "github.com/trustsight-io/deepseek-go"
 )
 
 func main() {
-    client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+    client, err := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+    if err != nil {
+        log.Fatal(err)
+    }
 
     resp, err := client.CreateChatCompletion(
         context.Background(),
@@ -37,10 +43,98 @@ func main() {
         },
     )
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
 
     fmt.Println(resp.Choices[0].Message.Content)
+}
+```
+
+### Streaming Chat Completion
+
+```go
+stream, err := client.CreateChatCompletionStream(
+    context.Background(),
+    &deepseek.ChatCompletionRequest{
+        Model: "deepseek-chat",
+        Messages: []deepseek.Message{
+            {
+                Role:    deepseek.RoleUser,
+                Content: "Tell me a story.",
+            },
+        },
+        Stream: true,
+    },
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer stream.Close()
+
+for {
+    response, err := stream.Recv()
+    if err == io.EOF {
+        break
+    }
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Print(response.Choices[0].Delta.Content)
+}
+```
+
+### Token Estimation
+
+```go
+// Estimate tokens in text
+text := "Hello 世界!"
+estimate := client.EstimateTokenCount(text)
+fmt.Printf("Estimated tokens: %d\n", estimate.EstimatedTokens)
+
+// Estimate tokens in messages
+messages := []deepseek.Message{
+    {
+        Role:    deepseek.RoleSystem,
+        Content: "You are a helpful assistant.",
+    },
+    {
+        Role:    deepseek.RoleUser,
+        Content: "Hello!",
+    },
+}
+estimate = client.EstimateTokensFromMessages(messages)
+fmt.Printf("Estimated total tokens: %d\n", estimate.EstimatedTokens)
+```
+
+### List Available Models
+
+```go
+models, err := client.ListModels(context.Background())
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, model := range models.Data {
+    fmt.Printf("- %s:\n", model.ID)
+    fmt.Printf("  Object: %s\n", model.Object)
+    fmt.Printf("  Owner: %s\n", model.OwnedBy)
+}
+```
+
+### Check Account Balance
+
+```go
+balance, err := client.GetBalance(context.Background())
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Account Status: %v\n", balance.IsAvailable)
+for _, info := range balance.BalanceInfos {
+    fmt.Printf("\nBalance Info for %s:\n", info.Currency)
+    fmt.Printf("  Total Balance: %s\n", info.TotalBalance)
+    fmt.Printf("  Granted Balance: %s\n", info.GrantedBalance)
+    fmt.Printf("  Topped Up Balance: %s\n", info.ToppedUpBalance)
 }
 ```
 
@@ -71,9 +165,9 @@ func main() {
 The tests are organized into several files:
 - `client_test.go`: Client configuration and error handling
 - `chat_test.go`: Chat completion functionality (including streaming)
-- `models_test.go`: Model management and configuration
-- `balance_test.go`: Account balance and usage operations
-- `tokens_test.go`: Token counting and analysis utilities
+- `models_test.go`: Model listing and retrieval
+- `balance_test.go`: Account balance operations
+- `tokens_test.go`: Token estimation utilities
 
 ### Running Tests
 

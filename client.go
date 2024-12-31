@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/trustsight/deepseek-go/internal/errors"
-	"github.com/trustsight/deepseek-go/internal/util"
+	"github.com/trustsight-io/deepseek-go/internal/errors"
+	"github.com/trustsight-io/deepseek-go/internal/util"
 )
 
 // Version represents the current version of the client
