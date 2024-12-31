@@ -10,108 +10,196 @@ import (
 	"time"
 )
 
-// Client is the DeepSeek API client.
+// Version represents the current version of the client
+const Version = "v0.1.0"
+
+const (
+	defaultBaseURL        = "https://api.deepseek.com/v1"
+	defaultTimeout        = 30 * time.Second
+	defaultMaxRetries     = 3
+	defaultRetryWaitTime  = 1 * time.Second
+	defaultMaxRequestSize = 2 << 20 // 2MB
+)
+
+// Client represents a DeepSeek API client with all configuration options
 type Client struct {
-	apiKey     string
 	baseURL    string
+	apiKey     string
 	httpClient *http.Client
-	userAgent  string
-	orgID      string
-	maxRetries int
-	retryDelay time.Duration
+
+	// Configuration options
+	maxRetries     int
+	retryWaitTime  time.Duration
+	maxRequestSize int64
+
+	// Feature flags
+	enableRetries bool
+	debug         bool
 }
 
-// NewClient creates a new DeepSeek API client.
-func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
-	if apiKey == "" {
-		return nil, fmt.Errorf("deepseek: API key is required")
+// ClientOption represents a function that modifies the client configuration
+type ClientOption func(*Client)
+
+// WithBaseURL sets a custom base URL for the client
+func WithBaseURL(url string) ClientOption {
+	return func(c *Client) {
+		c.baseURL = url
+	}
+}
+
+// WithHTTPClient sets a custom HTTP client
+func WithHTTPClient(client *http.Client) ClientOption {
+	return func(c *Client) {
+		c.httpClient = client
+	}
+}
+
+// WithMaxRetries sets the maximum number of retries for failed requests
+func WithMaxRetries(retries int) ClientOption {
+	return func(c *Client) {
+		c.maxRetries = retries
+		c.enableRetries = retries > 0
+	}
+}
+
+// WithRetryWaitTime sets the wait time between retries
+func WithRetryWaitTime(duration time.Duration) ClientOption {
+	return func(c *Client) {
+		c.retryWaitTime = duration
+	}
+}
+
+// WithMaxRequestSize sets the maximum request size in bytes
+func WithMaxRequestSize(size int64) ClientOption {
+	return func(c *Client) {
+		c.maxRequestSize = size
+	}
+}
+
+// WithDebug enables debug logging
+func WithDebug(debug bool) ClientOption {
+	return func(c *Client) {
+		c.debug = debug
+	}
+}
+
+// NewClient creates a new DeepSeek API client with the provided options
+func NewClient(apiKey string, opts ...ClientOption) *Client {
+	client := &Client{
+		baseURL:        defaultBaseURL,
+		apiKey:         apiKey,
+		maxRetries:     defaultMaxRetries,
+		retryWaitTime:  defaultRetryWaitTime,
+		maxRequestSize: defaultMaxRequestSize,
+		enableRetries:  true,
+		httpClient: &http.Client{
+			Timeout: defaultTimeout,
+		},
 	}
 
-	c := &Client{
-		apiKey: apiKey,
-	}
-
-	// Apply default options
-	for _, opt := range defaultOptions() {
-		if err := opt(c); err != nil {
-			return nil, err
-		}
-	}
-
-	// Apply user-provided options
 	for _, opt := range opts {
-		if err := opt(c); err != nil {
-			return nil, err
-		}
+		opt(client)
 	}
 
-	return c, nil
+	return client
 }
 
-// newRequest creates a new HTTP request.
+// Close closes any resources held by the client
+func (c *Client) Close() error {
+	// Currently no resources to clean up
+	return nil
+}
+
+// newRequest creates a new HTTP request with the given method, path, and body
 func (c *Client) newRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
 	var buf bytes.Buffer
 	if body != nil {
 		if err := json.NewEncoder(&buf).Encode(body); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to encode request body: %v", err)
 		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, &buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("User-Agent", c.userAgent)
-
-	if c.orgID != "" {
-		req.Header.Set("DeepSeek-Organization", c.orgID)
-	}
+	req.Header.Set("User-Agent", "deepseek-go/"+Version)
 
 	return req, nil
 }
 
-// do executes an HTTP request and decodes the response.
-func (c *Client) do(req *http.Request, v interface{}) error {
+// do executes an HTTP request with retries and error handling
+func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error {
 	var lastErr error
+
+	// Execute request with retries if enabled
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		if attempt > 0 {
-			time.Sleep(time.Duration(attempt) * c.retryDelay)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = err
+			if !c.enableRetries || attempt == c.maxRetries {
+				return fmt.Errorf("request failed: %v", err)
+			}
+			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
 			continue
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			if v != nil {
-				if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
-					return fmt.Errorf("deepseek: failed to decode response: %v", err)
-				}
-			}
-			return nil
-		}
-
+		// Read the response body
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			lastErr = fmt.Errorf("deepseek: failed to read error response: %v", err)
+			lastErr = fmt.Errorf("failed to read response body: %v", err)
+			if !c.enableRetries || attempt == c.maxRetries {
+				return lastErr
+			}
+			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
 			continue
 		}
 
-		var apiErr APIError
-		if err := json.Unmarshal(body, &apiErr); err != nil {
-			lastErr = fmt.Errorf("deepseek: failed to decode error response: %v", err)
+		// Check if we should retry based on status code
+		if shouldRetry(resp.StatusCode) && c.enableRetries && attempt < c.maxRetries {
+			lastErr = fmt.Errorf("request failed with status %d", resp.StatusCode)
+			time.Sleep(c.retryWaitTime * time.Duration(attempt+1))
 			continue
 		}
 
-		apiErr.StatusCode = resp.StatusCode
-		return handleErrorResp(resp, &apiErr)
+		// Handle error responses
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			var apiErr APIError
+			if err := json.Unmarshal(body, &apiErr); err != nil {
+				return fmt.Errorf("failed to decode error response: %v", err)
+			}
+			apiErr.StatusCode = resp.StatusCode
+			return handleErrorResp(resp, &apiErr)
+		}
+
+		// Decode the response if a target is provided
+		if v != nil {
+			if err := json.Unmarshal(body, v); err != nil {
+				return fmt.Errorf("failed to decode response: %v", err)
+			}
+		}
+
+		return nil
 	}
 
-	return fmt.Errorf("deepseek: request failed after %d retries: %v", c.maxRetries, lastErr)
+	return lastErr
+}
+
+// shouldRetry returns true if the status code indicates a retryable error
+func shouldRetry(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests ||
+		statusCode == http.StatusInternalServerError ||
+		statusCode == http.StatusBadGateway ||
+		statusCode == http.StatusServiceUnavailable ||
+		statusCode == http.StatusGatewayTimeout
 }

@@ -30,7 +30,7 @@ func (c *Client) CreateChatCompletion(
 	}
 
 	var response ChatCompletionResponse
-	if err := c.do(req, &response); err != nil {
+	if err := c.do(ctx, req, &response); err != nil {
 		return nil, err
 	}
 

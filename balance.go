@@ -21,7 +21,7 @@ func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
 	}
 
 	var balance Balance
-	if err := c.do(req, &balance); err != nil {
+	if err := c.do(ctx, req, &balance); err != nil {
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func (c *Client) GetUsage(ctx context.Context, startDate, endDate string) (*APIU
 	req.URL.RawQuery = q.Encode()
 
 	var usage APIUsage
-	if err := c.do(req, &usage); err != nil {
+	if err := c.do(ctx, req, &usage); err != nil {
 		return nil, err
 	}
 
