@@ -33,15 +33,15 @@ func main() {
 		context.Background(),
 		&deepseek.ChatCompletionRequest{
 			Model: "deepseek-chat",
-			Messages: []deepseek.ChatMessage{
+			Messages: []deepseek.Message{
 				{
-					Role: "system",
+					Role: deepseek.RoleSystem,
 					Content: `You are a product information generator. 
 					Generate product information in JSON format following the Product struct schema.
 					Always generate valid JSON that can be parsed into the Product struct.`,
 				},
 				{
-					Role:    "user",
+					Role:    deepseek.RoleUser,
 					Content: "Generate a product entry for a high-end laptop computer.",
 				},
 			},

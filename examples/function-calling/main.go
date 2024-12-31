@@ -38,32 +38,32 @@ func main() {
 	client := deepseek.NewClient(apiKey)
 
 	// Define the function that the model can call
-	weatherFunction := deepseek.FunctionDefinition{
+	weatherFunction := deepseek.Function{
 		Name:        "get_current_weather",
 		Description: "Get the current weather in a given location",
-		Parameters: map[string]interface{}{
+		Parameters: json.RawMessage(`{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"location": map[string]interface{}{
-					"type":        "string",
-					"description": "The city and state, e.g., San Francisco, CA",
-				},
+			"properties": {
+				"location": {
+					"type": "string",
+					"description": "The city and state, e.g., San Francisco, CA"
+				}
 			},
-			"required": []string{"location"},
-		},
+			"required": ["location"]
+		}`),
 	}
 
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		&deepseek.ChatCompletionRequest{
 			Model: "deepseek-chat",
-			Messages: []deepseek.ChatMessage{
+			Messages: []deepseek.Message{
 				{
-					Role:    "user",
+					Role:    deepseek.RoleUser,
 					Content: "What's the weather like in Paris?",
 				},
 			},
-			Functions: []deepseek.FunctionDefinition{weatherFunction},
+			Functions: []deepseek.Function{weatherFunction},
 		},
 	)
 	if err != nil {
@@ -72,11 +72,10 @@ func main() {
 
 	// Handle the function call
 	if resp.Choices[0].Message.FunctionCall != nil {
-		functionCall := resp.Choices[0].Message.FunctionCall.(map[string]interface{})
 		var args struct {
 			Location string `json:"location"`
 		}
-		if err := json.Unmarshal([]byte(functionCall["arguments"].(string)), &args); err != nil {
+		if err := json.Unmarshal(resp.Choices[0].Message.FunctionCall.Arguments, &args); err != nil {
 			log.Fatal(err)
 		}
 
@@ -88,18 +87,18 @@ func main() {
 			context.Background(),
 			&deepseek.ChatCompletionRequest{
 				Model: "deepseek-chat",
-				Messages: []deepseek.ChatMessage{
+				Messages: []deepseek.Message{
 					{
-						Role:    "user",
+						Role:    deepseek.RoleUser,
 						Content: "What's the weather like in Paris?",
 					},
 					{
-						Role:         "assistant",
+						Role:         deepseek.RoleAssistant,
 						Content:      "",
-						FunctionCall: functionCall,
+						FunctionCall: resp.Choices[0].Message.FunctionCall,
 					},
 					{
-						Role:    "function",
+						Role:    deepseek.RoleFunction,
 						Name:    "get_current_weather",
 						Content: fmt.Sprintf("The current weather in %s is %.1f°%s and %s", weather.Location, weather.Temperature, weather.Unit, weather.Condition),
 					},

@@ -23,13 +23,13 @@ func main() {
 		context.Background(),
 		&deepseek.ChatCompletionRequest{
 			Model: "deepseek-chat",
-			Messages: []deepseek.ChatMessage{
+			Messages: []deepseek.Message{
 				{
-					Role:    "system",
+					Role:    deepseek.RoleSystem,
 					Content: "You are a helpful assistant.",
 				},
 				{
-					Role:    "user",
+					Role:    deepseek.RoleUser,
 					Content: "Write a short story about a robot learning to paint.",
 				},
 			},
