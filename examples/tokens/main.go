@@ -15,7 +15,10 @@ func main() {
 		log.Fatal("DEEPSEEK_API_KEY environment variable is required")
 	}
 
-	client := deepseek.NewClient(apiKey)
+	client, err := deepseek.NewClient(apiKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 	model := "deepseek-chat"
 
 	// Count tokens in a text

@@ -14,7 +14,8 @@ import (
 func TestGetBalance(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
 	defer cancel()
@@ -24,22 +25,23 @@ func TestGetBalance(t *testing.T) {
 	assert.NotNil(t, balance)
 
 	// Verify balance details
-	assert.Equal(t, "balance", balance.Object)
-	assert.NotZero(t, balance.TotalBalance)
-	assert.NotEmpty(t, balance.Currency)
-	assert.NotZero(t, balance.GrantedQuota)
-	assert.NotZero(t, balance.UsedQuota)
-	assert.NotZero(t, balance.RemainingQuota)
-	assert.NotEmpty(t, balance.LastUpdated)
+	assert.True(t, balance.IsAvailable)
+	assert.NotEmpty(t, balance.BalanceInfos)
 
-	// Verify quota relationships
-	assert.Equal(t, balance.GrantedQuota-balance.UsedQuota, balance.RemainingQuota)
+	// Verify balance info details
+	for _, info := range balance.BalanceInfos {
+		assert.NotEmpty(t, info.Currency)
+		assert.NotEmpty(t, info.TotalBalance)
+		assert.NotEmpty(t, info.GrantedBalance)
+		assert.NotEmpty(t, info.ToppedUpBalance)
+	}
 }
 
 func TestGetUsage(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string

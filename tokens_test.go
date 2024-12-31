@@ -13,7 +13,8 @@ import (
 func TestCountTokens(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
@@ -73,7 +74,8 @@ func TestCountTokens(t *testing.T) {
 func TestEstimateTokensFromMessages(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
@@ -153,7 +155,8 @@ func TestEstimateTokensFromMessages(t *testing.T) {
 func TestTokenizeText(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string

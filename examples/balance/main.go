@@ -16,7 +16,10 @@ func main() {
 		log.Fatal("DEEPSEEK_API_KEY environment variable is required")
 	}
 
-	client := deepseek.NewClient(apiKey)
+	client, err := deepseek.NewClient(apiKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Get current balance
 	fmt.Println("Getting current balance:")
@@ -25,17 +28,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Total Balance: %.2f %s\n", balance.TotalBalance, balance.Currency)
-	fmt.Printf("Granted Quota: %.2f\n", balance.GrantedQuota)
-	fmt.Printf("Used Quota: %.2f\n", balance.UsedQuota)
-	fmt.Printf("Remaining Quota: %.2f\n", balance.RemainingQuota)
-	if balance.QuotaResetTime != "" {
-		fmt.Printf("Quota Reset Time: %s\n", balance.QuotaResetTime)
+	fmt.Printf("Account Status: %v\n", balance.IsAvailable)
+	for _, info := range balance.BalanceInfos {
+		fmt.Printf("\nBalance Info for %s:\n", info.Currency)
+		fmt.Printf("  Total Balance: %s\n", info.TotalBalance)
+		fmt.Printf("  Granted Balance: %s\n", info.GrantedBalance)
+		fmt.Printf("  Topped Up Balance: %s\n", info.ToppedUpBalance)
 	}
-	if balance.ExpirationTime != "" {
-		fmt.Printf("Expiration Time: %s\n", balance.ExpirationTime)
-	}
-	fmt.Printf("Last Updated: %s\n", balance.LastUpdated)
 
 	// Get usage history for the last 7 days
 	fmt.Println("\nGetting usage history for the last 7 days:")

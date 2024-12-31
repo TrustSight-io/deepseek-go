@@ -15,7 +15,10 @@ func main() {
 		log.Fatal("DEEPSEEK_API_KEY environment variable is required")
 	}
 
-	client := deepseek.NewClient(apiKey)
+	client, err := deepseek.NewClient(apiKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	resp, err := client.CreateChatCompletion(
 		context.Background(),

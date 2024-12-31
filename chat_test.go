@@ -13,7 +13,8 @@ import (
 func TestCreateChatCompletion(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
@@ -105,7 +106,8 @@ func TestCreateChatCompletion(t *testing.T) {
 func TestCreateChatCompletionStream(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
 	defer cancel()
@@ -161,7 +163,8 @@ func TestCreateChatCompletionStream(t *testing.T) {
 func TestCreateChatCompletionStreamErrors(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string

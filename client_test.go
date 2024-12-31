@@ -79,12 +79,14 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := deepseek.NewClient(tt.apiKey, tt.opts...)
+			client, err := deepseek.NewClient(tt.apiKey, tt.opts...)
 			if tt.wantErr {
+				assert.Error(t, err)
 				assert.Nil(t, client)
 				return
 			}
 
+			require.NoError(t, err)
 			require.NotNil(t, client)
 
 			// Test a simple API call to verify configuration
@@ -107,14 +109,15 @@ func TestClientTimeout(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
 
-	client := deepseek.NewClient(config.APIKey,
+	client, err := deepseek.NewClient(config.APIKey,
 		deepseek.WithHTTPClient(&http.Client{
 			Timeout: 1 * time.Millisecond, // Very short timeout
 		}),
 	)
+	require.NoError(t, err)
 
 	ctx := context.Background()
-	_, err := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
+	_, respErr := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
 		Model: "deepseek-chat",
 		Messages: []deepseek.Message{
 			{
@@ -124,19 +127,20 @@ func TestClientTimeout(t *testing.T) {
 		},
 	})
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timeout")
+	assert.Error(t, respErr)
+	assert.Contains(t, respErr.Error(), "timeout")
 }
 
 func TestClientContextCancellation(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
+	_, respErr := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
 		Model: "deepseek-chat",
 		Messages: []deepseek.Message{
 			{
@@ -146,21 +150,22 @@ func TestClientContextCancellation(t *testing.T) {
 		},
 	})
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled")
+	assert.Error(t, respErr)
+	assert.Contains(t, respErr.Error(), "context canceled")
 }
 
 func TestClientRetry(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
 
-	client := deepseek.NewClient(config.APIKey,
+	client, err := deepseek.NewClient(config.APIKey,
 		deepseek.WithMaxRetries(2),
 		deepseek.WithRetryWaitTime(time.Second),
 	)
+	require.NoError(t, err)
 
 	ctx := context.Background()
-	_, err := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
+	_, respErr := client.CreateChatCompletion(ctx, &deepseek.ChatCompletionRequest{
 		Model: "nonexistent-model", // This should trigger retries
 		Messages: []deepseek.Message{
 			{
@@ -170,7 +175,7 @@ func TestClientRetry(t *testing.T) {
 		},
 	})
 
-	assert.Error(t, err)
+	assert.Error(t, respErr)
 	// The error should indicate we tried multiple times
-	assert.Contains(t, err.Error(), "model not found")
+	assert.Contains(t, respErr.Error(), "model not found")
 }

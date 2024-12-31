@@ -87,7 +87,11 @@ func WithDebug(debug bool) ClientOption {
 }
 
 // NewClient creates a new DeepSeek API client with the provided options
-func NewClient(apiKey string, opts ...ClientOption) *Client {
+func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key cannot be empty")
+	}
+
 	client := &Client{
 		baseURL:        defaultBaseURL,
 		apiKey:         apiKey,
@@ -104,7 +108,7 @@ func NewClient(apiKey string, opts ...ClientOption) *Client {
 		opt(client)
 	}
 
-	return client
+	return client, nil
 }
 
 // Close closes any resources held by the client

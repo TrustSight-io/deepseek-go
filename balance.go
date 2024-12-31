@@ -8,17 +8,18 @@ import (
 	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
+// BalanceInfo represents individual balance information for a currency
+type BalanceInfo struct {
+	Currency        string `json:"currency"`
+	TotalBalance    string `json:"total_balance"`
+	GrantedBalance  string `json:"granted_balance"`
+	ToppedUpBalance string `json:"topped_up_balance"`
+}
+
 // Balance represents a user's balance information
 type Balance struct {
-	Object         string  `json:"object"`
-	TotalBalance   float64 `json:"total_balance"`
-	Currency       string  `json:"currency"`
-	GrantedQuota   float64 `json:"granted_quota"`
-	UsedQuota      float64 `json:"used_quota"`
-	RemainingQuota float64 `json:"remaining_quota"`
-	QuotaResetTime string  `json:"quota_reset_time,omitempty"`
-	ExpirationTime string  `json:"expiration_time,omitempty"`
-	LastUpdated    string  `json:"last_updated"`
+	IsAvailable  bool          `json:"is_available"`
+	BalanceInfos []BalanceInfo `json:"balance_infos"`
 }
 
 // GetBalance retrieves the current balance for the account
@@ -30,7 +31,7 @@ func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
 		}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, "/billing/balance", nil)
+	req, err := c.newRequest(ctx, http.MethodGet, "/user/balance", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -105,7 +106,7 @@ func (c *Client) GetUsage(ctx context.Context, params *UsageParams) (*UsageRespo
 		}
 	}
 
-	req, err := c.newRequest(ctx, http.MethodGet, "/billing/usage", nil)
+	req, err := c.newRequest(ctx, http.MethodGet, "/user/usage", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}

@@ -13,7 +13,8 @@ import (
 func TestListModels(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.TestTimeout)
 	defer cancel()
@@ -48,7 +49,8 @@ func TestListModels(t *testing.T) {
 func TestGetModel(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
@@ -100,7 +102,8 @@ func TestGetModel(t *testing.T) {
 func TestGetModelConfig(t *testing.T) {
 	testutil.SkipIfShort(t)
 	config := testutil.LoadTestConfig(t)
-	client := deepseek.NewClient(config.APIKey)
+	client, err := deepseek.NewClient(config.APIKey)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string

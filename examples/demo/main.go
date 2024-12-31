@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Create a client with custom configuration
-	client := deepseek.NewClient(
+	client, err := deepseek.NewClient(
 		os.Getenv("DEEPSEEK_API_KEY"),
 		deepseek.WithHTTPClient(&http.Client{
 			Timeout: time.Minute,
@@ -22,6 +22,9 @@ func main() {
 		deepseek.WithMaxRetries(2),
 		deepseek.WithDebug(true),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer client.Close()
 
 	ctx := context.Background()
@@ -140,12 +143,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("\nAccount balance: %.2f %s\n", balance.TotalBalance, balance.Currency)
-	fmt.Printf("Granted quota: %.2f\n", balance.GrantedQuota)
-	fmt.Printf("Used quota: %.2f\n", balance.UsedQuota)
-	fmt.Printf("Remaining quota: %.2f\n", balance.RemainingQuota)
-	if balance.QuotaResetTime != "" {
-		fmt.Printf("Quota resets at: %s\n", balance.QuotaResetTime)
+	fmt.Printf("\nAccount Status: %v\n", balance.IsAvailable)
+	for _, info := range balance.BalanceInfos {
+		fmt.Printf("\nBalance Info for %s:\n", info.Currency)
+		fmt.Printf("  Total Balance: %s\n", info.TotalBalance)
+		fmt.Printf("  Granted Balance: %s\n", info.GrantedBalance)
+		fmt.Printf("  Topped Up Balance: %s\n", info.ToppedUpBalance)
 	}
 
 	// Get usage history
