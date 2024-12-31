@@ -17,7 +17,7 @@ import (
 const Version = "v0.1.0"
 
 const (
-	defaultBaseURL        = "https://api.deepseek.com/v1"
+	defaultBaseURL        = "https://api.deepseek.com"
 	defaultTimeout        = 30 * time.Second
 	defaultMaxRetries     = 3
 	defaultRetryWaitTime  = 1 * time.Second
@@ -133,9 +133,9 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body inter
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 	req.Header.Set("User-Agent", "deepseek-go/"+Version)
-
 	return req, nil
 }
 

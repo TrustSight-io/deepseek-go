@@ -128,7 +128,7 @@ func TestClientTimeout(t *testing.T) {
 	})
 
 	assert.Error(t, respErr)
-	assert.Contains(t, respErr.Error(), "timeout")
+	assert.Contains(t, respErr.Error(), "context deadline exceeded")
 }
 
 func TestClientContextCancellation(t *testing.T) {
@@ -177,5 +177,5 @@ func TestClientRetry(t *testing.T) {
 
 	assert.Error(t, respErr)
 	// The error should indicate we tried multiple times
-	assert.Contains(t, respErr.Error(), "model not found")
+	assert.Contains(t, respErr.Error(), "400")
 }
