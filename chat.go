@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
 // CreateChatCompletion creates a chat completion.
@@ -13,11 +15,11 @@ func (c *Client) CreateChatCompletion(
 	request *ChatCompletionRequest,
 ) (*ChatCompletionResponse, error) {
 	if request == nil {
-		return nil, &InvalidRequestError{fmt.Errorf("request cannot be nil")}
+		return nil, &errors.InvalidRequestError{Param: "request", Err: fmt.Errorf("cannot be nil")}
 	}
 
 	if len(request.Messages) == 0 {
-		return nil, &InvalidRequestError{fmt.Errorf("messages cannot be empty")}
+		return nil, &errors.InvalidRequestError{Param: "messages", Err: fmt.Errorf("cannot be empty")}
 	}
 
 	if request.Model == "" {
@@ -43,11 +45,11 @@ func (c *Client) CreateChatCompletionStream(
 	request *ChatCompletionRequest,
 ) (*ChatCompletionStreamReader, error) {
 	if request == nil {
-		return nil, &InvalidRequestError{fmt.Errorf("request cannot be nil")}
+		return nil, &errors.InvalidRequestError{Param: "request", Err: fmt.Errorf("cannot be nil")}
 	}
 
 	if len(request.Messages) == 0 {
-		return nil, &InvalidRequestError{fmt.Errorf("messages cannot be empty")}
+		return nil, &errors.InvalidRequestError{Param: "messages", Err: fmt.Errorf("cannot be empty")}
 	}
 
 	request.Stream = true
@@ -67,12 +69,12 @@ func (c *Client) CreateChatCompletionStream(
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer resp.Body.Close()
-		var apiErr APIError
+		var apiErr errors.APIError
 		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
 			return nil, fmt.Errorf("deepseek: failed to decode error response: %v", err)
 		}
 		apiErr.StatusCode = resp.StatusCode
-		return nil, handleErrorResp(resp, &apiErr)
+		return nil, errors.HandleErrorResp(resp, &apiErr)
 	}
 
 	return &ChatCompletionStreamReader{

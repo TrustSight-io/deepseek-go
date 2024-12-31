@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
 // CompletionRequest represents a request for text completion.
@@ -44,11 +46,11 @@ func (c *Client) CreateCompletion(
 	request *CompletionRequest,
 ) (*CompletionResponse, error) {
 	if request == nil {
-		return nil, &InvalidRequestError{fmt.Errorf("request cannot be nil")}
+		return nil, &errors.InvalidRequestError{Param: "request", Err: fmt.Errorf("cannot be nil")}
 	}
 
 	if request.Prompt == "" {
-		return nil, &InvalidRequestError{fmt.Errorf("prompt cannot be empty")}
+		return nil, &errors.InvalidRequestError{Param: "prompt", Err: fmt.Errorf("cannot be empty")}
 	}
 
 	if request.Model == "" {
@@ -74,11 +76,11 @@ func (c *Client) CreateCompletionStream(
 	request *CompletionRequest,
 ) (*CompletionStreamReader, error) {
 	if request == nil {
-		return nil, &InvalidRequestError{fmt.Errorf("request cannot be nil")}
+		return nil, &errors.InvalidRequestError{Param: "request", Err: fmt.Errorf("cannot be nil")}
 	}
 
 	if request.Prompt == "" {
-		return nil, &InvalidRequestError{fmt.Errorf("prompt cannot be empty")}
+		return nil, &errors.InvalidRequestError{Param: "prompt", Err: fmt.Errorf("cannot be empty")}
 	}
 
 	request.Stream = true
@@ -97,7 +99,7 @@ func (c *Client) CreateCompletionStream(
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, handleErrorResp(resp, &APIError{StatusCode: resp.StatusCode})
+		return nil, errors.HandleErrorResp(resp, &errors.APIError{StatusCode: resp.StatusCode})
 	}
 
 	return &CompletionStreamReader{

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
 // ChatCompletionStreamReader handles streaming responses from the chat completion API.
@@ -32,7 +34,7 @@ func (s *ChatCompletionStreamReader) Recv() (*ChatCompletionStream, error) {
 
 	var response ChatCompletionStream
 	if err := json.Unmarshal(chunk, &response); err != nil {
-		return nil, fmt.Errorf("deepseek: failed to decode stream response: %v", err)
+		return nil, &errors.InvalidRequestError{Err: fmt.Errorf("failed to decode stream response: %v", err)}
 	}
 
 	if len(response.Choices) > 0 && response.Choices[0].FinishReason != "" {

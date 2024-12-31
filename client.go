@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
 // Version represents the current version of the client
@@ -174,12 +176,12 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error
 
 		// Handle error responses
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			var apiErr APIError
+			var apiErr errors.APIError
 			if err := json.Unmarshal(body, &apiErr); err != nil {
 				return fmt.Errorf("failed to decode error response: %v", err)
 			}
 			apiErr.StatusCode = resp.StatusCode
-			return handleErrorResp(resp, &apiErr)
+			return errors.HandleErrorResp(resp, &apiErr)
 		}
 
 		// Decode the response if a target is provided

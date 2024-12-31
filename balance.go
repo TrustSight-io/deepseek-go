@@ -2,7 +2,10 @@ package deepseek
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+
+	"github.com/trustsight/deepseek-go/internal/errors"
 )
 
 // Balance represents the account's credit balance information.
@@ -15,6 +18,10 @@ type Balance struct {
 
 // GetBalance retrieves the current balance information for the account.
 func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
+	if ctx == nil {
+		return nil, &errors.InvalidRequestError{Param: "context", Err: fmt.Errorf("cannot be nil")}
+	}
+
 	req, err := c.newRequest(ctx, http.MethodGet, "/balance", nil)
 	if err != nil {
 		return nil, err
@@ -47,6 +54,10 @@ type APIUsage struct {
 
 // GetUsage retrieves the API usage information for a specified time period.
 func (c *Client) GetUsage(ctx context.Context, startDate, endDate string) (*APIUsage, error) {
+	if ctx == nil {
+		return nil, &errors.InvalidRequestError{Param: "context", Err: fmt.Errorf("cannot be nil")}
+	}
+
 	req, err := c.newRequest(ctx, http.MethodGet, "/usage", nil)
 	if err != nil {
 		return nil, err
