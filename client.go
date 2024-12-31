@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/trustsight/deepseek-go/internal/errors"
+	"github.com/trustsight/deepseek-go/internal/util"
 )
 
 // Version represents the current version of the client
@@ -121,7 +122,8 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body inter
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, &buf)
+	url := util.JoinURL(c.baseURL, path)
+	req, err := http.NewRequestWithContext(ctx, method, url, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
@@ -176,9 +178,15 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error
 
 		// Handle error responses
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			// Check if response is HTML (common for infrastructure errors)
+			if util.IsHTML(body) {
+				return fmt.Errorf("received HTML response with status %d", resp.StatusCode)
+			}
+
 			var apiErr errors.APIError
 			if err := json.Unmarshal(body, &apiErr); err != nil {
-				return fmt.Errorf("failed to decode error response: %v", err)
+				// If we can't decode the error, return the raw body as string
+				return fmt.Errorf("api error (status %d): %s", resp.StatusCode, string(body))
 			}
 			apiErr.StatusCode = resp.StatusCode
 			return errors.HandleErrorResp(resp, &apiErr)

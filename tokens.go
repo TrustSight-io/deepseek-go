@@ -1,9 +1,7 @@
 package deepseek
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -51,22 +49,10 @@ func (c *Client) CountTokens(ctx context.Context, model string, text string) (*T
 		Text:  text,
 	}
 
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		fmt.Sprintf("%s/tokenizer/count", c.baseURL),
-		bytes.NewReader(body),
-	)
+	req, err := c.newRequest(ctx, http.MethodPost, "/tokenizer/count", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
-
-	req.Header.Set("Content-Type", "application/json")
 
 	var count TokenCount
 	if err := c.do(ctx, req, &count); err != nil {
@@ -145,22 +131,10 @@ func (c *Client) TokenizeText(ctx context.Context, model string, text string) (*
 		Text:  text,
 	}
 
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		fmt.Sprintf("%s/tokenizer/tokenize", c.baseURL),
-		bytes.NewReader(body),
-	)
+	req, err := c.newRequest(ctx, http.MethodPost, "/tokenizer/tokenize", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
-
-	req.Header.Set("Content-Type", "application/json")
 
 	var tokenization TokenizationResponse
 	if err := c.do(ctx, req, &tokenization); err != nil {

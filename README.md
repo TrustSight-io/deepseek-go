@@ -1,14 +1,6 @@
 # DeepSeek Go Client
 
-A Go client library for the DeepSeek API. This library provides a simple and efficient way to interact with DeepSeek's language models.
-
-## Features
-
-- Chat completions with streaming support
-- Function calling capabilities
-- JSON mode support
-- Automatic retries and error handling
-- Customizable options and configurations
+A Go client library for the DeepSeek API.
 
 ## Installation
 
@@ -16,7 +8,7 @@ A Go client library for the DeepSeek API. This library provides a simple and eff
 go get github.com/trustsight/deepseek-go
 ```
 
-## Quick Start
+## Usage
 
 ```go
 package main
@@ -24,45 +16,126 @@ package main
 import (
     "context"
     "fmt"
-    deepseek "github.com/trustsight/deepseek-go"
+    "os"
+
+    "github.com/trustsight/deepseek-go"
 )
 
 func main() {
-    client := deepseek.NewClient("your-api-key")
-    
-    resp, err := client.CreateChatCompletion(context.Background(), &deepseek.ChatCompletionRequest{
-        Messages: []deepseek.ChatMessage{
-            {
-                Role:    "user",
-                Content: "Hello, how are you?",
+    client := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+
+    resp, err := client.CreateChatCompletion(
+        context.Background(),
+        &deepseek.ChatCompletionRequest{
+            Model: "deepseek-chat",
+            Messages: []deepseek.Message{
+                {
+                    Role:    deepseek.RoleUser,
+                    Content: "Hello!",
+                },
             },
         },
-    })
-    
+    )
     if err != nil {
         panic(err)
     }
-    
+
     fmt.Println(resp.Choices[0].Message.Content)
 }
 ```
 
-## Examples
+## Running Tests
 
-Check out the [examples](./examples) directory for more detailed usage examples:
+### Setup
 
-- [Basic Chat](./examples/chat)
-- [Streaming](./examples/streaming)
-- [Function Calling](./examples/function-calling)
-- [JSON Mode](./examples/json-mode)
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
 
-## Documentation
+2. Add your DeepSeek API key to `.env`:
+   ```
+   DEEPSEEK_API_KEY=your_api_key_here
+   ```
 
-For detailed documentation and API reference, visit [pkg.go.dev](https://pkg.go.dev/github.com/trustsight/deepseek-go).
+   You can get your API key from the [DeepSeek Platform](https://api.deepseek.com).
+
+3. (Optional) Configure test timeout:
+   ```
+   # Default is 30s, increase for slower connections
+   TEST_TIMEOUT=1m
+   ```
+
+### Test Organization
+
+The tests are organized into several files:
+- `client_test.go`: Client configuration and error handling
+- `chat_test.go`: Chat completion functionality (including streaming)
+- `models_test.go`: Model management and configuration
+- `balance_test.go`: Account balance and usage operations
+- `tokens_test.go`: Token counting and analysis utilities
+
+### Running Tests
+
+1. Run all tests (requires API key):
+   ```bash
+   go test -v ./...
+   ```
+
+2. Run tests in short mode (skips API calls):
+   ```bash
+   go test -v -short ./...
+   ```
+
+3. Run tests with race detection:
+   ```bash
+   go test -v -race ./...
+   ```
+
+4. Run tests with coverage:
+   ```bash
+   go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+   ```
+
+   View coverage in browser:
+   ```bash
+   go tool cover -html=coverage.txt
+   ```
+
+5. Run specific test:
+   ```bash
+   # Example: Run only chat completion tests
+   go test -v -run TestCreateChatCompletion ./...
+   ```
+
+### Test Environment Variables
+
+- `DEEPSEEK_API_KEY`: Your DeepSeek API key (required for API tests)
+- `TEST_TIMEOUT`: Test timeout duration (default: 30s)
+
+### Common Issues
+
+1. "invalid character 'A' looking for beginning of value":
+   - This usually means the API returned HTML instead of JSON
+   - Check if your API key is valid
+   - Verify you're using the correct API base URL
+
+2. "context deadline exceeded":
+   - Increase test timeout in `.env`: `TEST_TIMEOUT=60s`
+   - Check your internet connection
+
+3. "unexpected end of JSON input":
+   - The API response was truncated
+   - Could indicate network issues
+   - Try increasing the timeout
+
+4. Tests are skipped:
+   - Make sure `DEEPSEEK_API_KEY` is set in `.env`
+   - For quick testing, use `-short` flag to skip API tests
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
 
 ## License
 

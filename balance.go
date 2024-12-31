@@ -30,12 +30,7 @@ func (c *Client) GetBalance(ctx context.Context) (*Balance, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		fmt.Sprintf("%s/user/balance", c.baseURL),
-		nil,
-	)
+	req, err := c.newRequest(ctx, http.MethodGet, "/billing/balance", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -110,12 +105,7 @@ func (c *Client) GetUsage(ctx context.Context, params *UsageParams) (*UsageRespo
 		}
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		fmt.Sprintf("%s/user/usage", c.baseURL),
-		nil,
-	)
+	req, err := c.newRequest(ctx, http.MethodGet, "/billing/usage", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}

@@ -1,31 +1,28 @@
 package util
 
 import (
-	"encoding/json"
-	"io"
-	"net/http"
+	"bytes"
+	"strings"
 )
 
-// ReadJSON reads and decodes JSON from an HTTP response body.
-func ReadJSON(resp *http.Response, v interface{}) error {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+// IsHTML checks if the given bytes appear to be HTML content
+func IsHTML(body []byte) bool {
+	// Convert to lowercase for case-insensitive matching
+	lower := bytes.ToLower(body)
 
-	return json.Unmarshal(body, v)
+	// Check for common HTML indicators
+	return bytes.Contains(lower, []byte("<!doctype html")) ||
+		bytes.Contains(lower, []byte("<html")) ||
+		bytes.Contains(lower, []byte("</html>")) ||
+		bytes.Contains(lower, []byte("<body")) ||
+		bytes.Contains(lower, []byte("</body>")) ||
+		bytes.Contains(lower, []byte("<head")) ||
+		bytes.Contains(lower, []byte("</head>"))
 }
 
-// WriteJSON writes JSON to an HTTP response writer.
-func WriteJSON(w http.ResponseWriter, status int, v interface{}) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(v)
-}
-
-// IsJSON checks if a string is valid JSON.
-func IsJSON(str string) bool {
-	var js json.RawMessage
-	return json.Unmarshal([]byte(str), &js) == nil
+// JoinURL joins base URL with path, ensuring proper formatting
+func JoinURL(baseURL, path string) string {
+	baseURL = strings.TrimRight(baseURL, "/")
+	path = strings.TrimLeft(path, "/")
+	return baseURL + "/" + path
 }
