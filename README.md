@@ -2,6 +2,27 @@
 
 A Go client library for the DeepSeek API.
 
+## Table of Contents
+
+- [DeepSeek Go Client](#deepseek-go-client)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Chat Completion](#chat-completion)
+    - [JSON Mode](#json-mode)
+    - [Streaming Chat Completion](#streaming-chat-completion)
+    - [Token Estimation](#token-estimation)
+    - [List Available Models](#list-available-models)
+    - [Check Account Balance](#check-account-balance)
+  - [Running Tests](#running-tests)
+    - [Setup](#setup)
+    - [Test Organization](#test-organization)
+    - [Running Tests](#running-tests-1)
+    - [Test Environment Variables](#test-environment-variables)
+    - [Common Issues](#common-issues)
+  - [Contributing](#contributing)
+  - [License](#license)
+
 ## Installation
 
 ```bash
@@ -49,6 +70,102 @@ func main() {
     fmt.Println(resp.Choices[0].Message.Content)
 }
 ```
+
+### JSON Mode
+
+The library provides support for extracting structured JSON data from chat completions using the `JSONMode` flag and `JSONExtractor`:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/trustsight-io/deepseek-go"
+)
+
+// Product represents a product in an e-commerce system
+type Product struct {
+    ID          string  `json:"id"`
+    Name        string  `json:"name"`
+    Description string  `json:"description"`
+    Price       float64 `json:"price"`
+    Category    string  `json:"category"`
+    InStock     bool    `json:"in_stock"`
+}
+
+func main() {
+    client, err := deepseek.NewClient(os.Getenv("DEEPSEEK_API_KEY"))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Request product information in JSON format
+    resp, err := client.CreateChatCompletion(
+        context.Background(),
+        &deepseek.ChatCompletionRequest{
+            Model: "deepseek-chat",
+            Messages: []deepseek.Message{
+                {
+                    Role: deepseek.RoleSystem,
+                    Content: `You are a product information generator. 
+                    Generate product information in JSON format following the Product struct schema.`,
+                },
+                {
+                    Role:    deepseek.RoleUser,
+                    Content: "Generate a product entry for a high-end laptop computer.",
+                },
+            },
+            JSONMode: true, // Enable JSON mode
+        },
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Create a JSON extractor (optionally with schema validation)
+    extractor := deepseek.NewJSONExtractor(nil)
+    var product Product
+    if err := extractor.ExtractJSON(resp, &product); err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Product: %s - $%.2f\n", product.Name, product.Price)
+}
+```
+
+With schema validation:
+
+```go
+// Create a JSON extractor with schema validation
+schema := json.RawMessage(`{
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "price": {"type": "number"},
+        "category": {"type": "string"},
+        "in_stock": {"type": "boolean"}
+    },
+    "required": ["id", "name", "price"]
+}`)
+
+extractor := deepseek.NewJSONExtractor(schema)
+var product Product
+if err := extractor.ExtractJSON(resp, &product); err != nil {
+    log.Fatal(err)
+}
+```
+
+The `JSONExtractor` can handle JSON responses in various formats:
+- Direct JSON content
+- JSON within code blocks (```json)
+- JSON within regular code blocks (```)
+- JSON embedded in text
 
 ### Streaming Chat Completion
 

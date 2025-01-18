@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -55,10 +54,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Parse the response into a Product struct
+	// Create a JSON extractor without schema validation
+	extractor := deepseek.NewJSONExtractor(nil)
 	var product Product
-	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &product); err != nil {
-		log.Fatalf("Failed to parse JSON response: %v", err)
+	if err := extractor.ExtractJSON(resp, &product); err != nil {
+		log.Fatalf("Failed to extract JSON: %v", err)
 	}
 
 	// Print the formatted product information
